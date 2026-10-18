@@ -368,6 +368,13 @@ function processSinglePayslip(ss, dataSheet, templateSheet, rowNum) {
     .replaceAllWith(getCleanedValue('AD'));
   tempSheet.createTextFinder('{{CA}}').replaceAllWith(getCleanedValue('AG'));
 
+  // --- ADDED DYNAMIC CODES FOR CA BALANCE PLACEHOLDER ---
+  // If your main table doesn't have a CA Balance column, pull it here.
+  // Assuming column AH holds CA Balance. Change "AH" to your actual CA Balance column letter if different.
+  tempSheet
+    .createTextFinder('{{CA BAL}}')
+    .replaceAllWith(getCleanedValue('AH'));
+
   // Calculate Total Deductions dynamically from values in columns Q, R, S, T
   var pVal = parseFloat(dataSheet.getRange('AA' + rowNum).getValue()) || 0; // SSS
   var qVal = parseFloat(dataSheet.getRange('AB' + rowNum).getValue()) || 0; // Pag-ibig
@@ -389,29 +396,28 @@ function processSinglePayslip(ss, dataSheet, templateSheet, rowNum) {
     .createTextFinder('{{Net Pay}}')
     .replaceAllWith(getCleanedValue('AI'));
 
+  // --- NEW LOGIC: HIDE/DELETE CASH ADVANCE ROWS IF CA IS ZERO ---
+  if (tVal === 0) {
+    // We look up row numbers by searching for specific string signatures in the temporary sheet
+    var textFinderCA = tempSheet.createTextFinder('Cash Advance').findNext();
+    var textFinderCABal = tempSheet.createTextFinder('CA Balance').findNext();
+
+    // Delete the "CA Balance" row first if found, so row index order doesn't disrupt structural shifts
+    if (textFinderCABal) {
+      tempSheet.deleteRow(textFinderCABal.getRow());
+    }
+    // Delete the "Cash Advance" row second
+    if (textFinderCA) {
+      tempSheet.deleteRow(textFinderCA.getRow());
+    }
+  }
+
   SpreadsheetApp.flush(); // Force changes to render layout updates
 
   // PDF Generation Process using the Export URL
   var ssId = ss.getId();
   var sheetId = tempSheet.getSheetId();
   var url = ss.getUrl().replace(/edit$/, '') + 'export?';
-
-  // var exportOptions = {
-  //   exportFormat: 'pdf',
-  //   format: 'pdf',
-  //   size: 'statement',
-  //   portrait: 'true',
-  //   scale: '4',
-  //   top_margin: '1',
-  //   bottom_margin: '0.15',
-  //   left_margin: '1',
-  //   right_margin: '0.15',
-  //   sheetnames: 'false',
-  //   printtitle: 'false',
-  //   gridlines: 'false',
-  //   fzr: 'false',
-  //   gid: sheetId
-  // };
 
   var exportOptions = {
     exportFormat: 'pdf',
