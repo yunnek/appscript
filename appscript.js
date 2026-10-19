@@ -115,6 +115,32 @@ function duplicateRowsUntilDash() {
 
       cellK4.setValue(newK4Date);
     }
+
+    // 8. NEW LOGIC: Deduct CA from BAL in the newly duplicated rows
+    if (stopIndex > 1) {
+      // Get the range for Columns AG (CA) and AH (BAL) for the new rows
+      // (Excluding the dash row itself, so we use stopIndex - 1)
+      const targetRange = sheet.getRange(4, 33, stopIndex - 1, 2);
+      const financialValues = targetRange.getValues();
+
+      // Loop through each row in the newly duplicated block
+      for (let r = 0; r < financialValues.length; r++) {
+        const caValue = financialValues[r][0]; // Column AG (CA)
+        const balValue = financialValues[r][1]; // Column AH (BAL)
+
+        // Only process the row that actually contains numeric data in both cells
+        if (
+          typeof caValue === 'number' &&
+          caValue > 0 &&
+          typeof balValue === 'number'
+        ) {
+          const newBal = balValue - caValue;
+
+          // Update the BAL cell in that specific row
+          sheet.getRange(4 + r, 34).setValue(newBal);
+        }
+      }
+    }
   }
 }
 
@@ -383,14 +409,12 @@ function processSinglePayslip(ss, dataSheet, templateSheet, rowNum) {
   var tVal = parseFloat(dataSheet.getRange('AG' + rowNum).getValue()) || 0; // Cash advance
   var totalDeductions = pVal + qVal + rVal + sVal + tVal;
 
-  tempSheet
-    .createTextFinder('{{Total Deduction}}')
-    .replaceAllWith(
-      totalDeductions.toLocaleString('en-US', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }),
-    );
+  tempSheet.createTextFinder('{{Total Deduction}}').replaceAllWith(
+    totalDeductions.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }),
+  );
 
   tempSheet
     .createTextFinder('{{Net Pay}}')
